@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Helvetia Escrow</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#050505">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, sans-serif;
+      background: #050505;
+      color: #e6e6e6;
+      display: flex;
+      justify-content: center;
+      padding: 20px 0;
+    }
+
+    .app {
+      width: 360px;
+      background: #0a0a0a;
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.9);
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.2rem;
+      letter-spacing: 1.5px;
+      margin-bottom: 14px;
+      color: #cfcfcf;
+    }
+
+    .card {
+      background: linear-gradient(145deg, #0f0f0f, #050505);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 14px;
+      border: 1px solid #1a1a1a;
+    }
+
+    .label {
+      font-size: 0.7rem;
+      color: #8a8a8a;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .value {
+      margin-top: 4px;
+      font-size: 1rem;
+    }
+
+    .balance {
+      font-size: 1.6rem;
+      font-weight: 600;
+      margin-top: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    input, button {
+      width: 100%;
+      margin-top: 8px;
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+      font-size: 0.95rem;
+    }
+
+    input {
+      background: #050505;
+      color: #e6e6e6;
+      border: 1px solid #1c1c1c;
+    }
+
+    button {
+      background: #1a1a1a;
+      color: #e6e6e6;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #262626;
+    }
+
+    .msg {
+      font-size: 0.8rem;
+      margin-top: 8px;
+      min-height: 16px;
+      text-align: center;
+    }
+
+    .txns {
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .txn {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #141414;
+      font-size: 0.85rem;
+    }
+
+    .txn span {
+      color: #a3a3a3;
+    }
+
+    .credit {
+      color: #22c55e;
+    }
+
+    .debit {
+      color: #ef4444;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>HELVETIA ESCROW</h1>
+
+    <div class="card">
+      <div class="label">Account Holder</div>
+      <div class="value">Rakshit Rao</div>
+
+      <div class="label" style="margin-top:10px;">Total Assets</div>
+      <div class="balance">₹ <span id="balance"></span></div>
+    </div>
+
+    <div class="card">
+      <input type="number" id="amount" placeholder="Escrow Amount (₹6,000 – ₹20,000)">
+      <input type="password" id="pin" placeholder="Security PIN">
+      <button onclick="deposit()">Credit Escrow</button>
+      <button onclick="withdraw()">Debit Escrow</button>
+      <div class="msg" id="msg"></div>
+    </div>
+
+    <div class="card">
+      <div class="label">Escrow Ledger</div>
+      <div class="txns" id="txns"></div>
+    </div>
+  </div>
+
+  <script>
+    const CORRECT_PIN = "020709";
+
+    let balance = Number(localStorage.getItem("balance")) || 283765;
+    let txns = JSON.parse(localStorage.getItem("txns")) || [];
+
+    const balanceEl = document.getElementById("balance");
+    const txnsEl = document.getElementById("txns");
+    const msgEl = document.getElementById("msg");
+
+    function updateUI() {
+      balanceEl.textContent = balance.toLocaleString("en-IN");
+      txnsEl.innerHTML = "";
+      txns.slice().reverse().forEach(t => {
+        const div = document.createElement("div");
+        div.className = "txn";
+        div.innerHTML = `
+          <span>Escrow</span>
+          <span class="${t.type}">${t.sign}₹${t.amount.toLocaleString("en-IN")}</span>
+        `;
+        txnsEl.appendChild(div);
+      });
+      localStorage.setItem("balance", balance);
+      localStorage.setItem("txns", JSON.stringify(txns));
+    }
+
+    function validate(amt) {
+      if (pin.value !== CORRECT_PIN) {
+        error("Invalid PIN");
+        return false;
+      }
+      if (amt < 6000 || amt > 20000) {
+        error("Escrow must be ₹6,000–₹20,000");
+        return false;
+      }
+      return true;
+    }
+
+    function deposit() {
+      const amt = Number(amount.value);
+      if (!validate(amt)) return;
+      balance += amt;
+      txns.push({ amount: amt, type: "credit", sign: "+" });
+      success("Escrow credited");
+    }
+
+    function withdraw() {
+      const amt = Number(amount.value);
+      if (!validate(amt)) return;
+      if (amt > balance) {
+        error("Insufficient assets");
+        return;
+      }
+      balance -= amt;
+      txns.push({ amount: amt, type: "debit", sign: "−" });
+      success("Escrow debited");
+    }
+
+    function success(text) {
+      msgEl.style.color = "#22c55e";
+      msgEl.textContent = text;
+      amount.value = "";
+      pin.value = "";
+      updateUI();
+    }
+
+    function error(text) {
+      msgEl.style.color = "#ef4444";
+      msgEl.textContent = text;
+    }
+
+    updateUI();
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js");
+    }
+  </script>
+</body>
+</html>
